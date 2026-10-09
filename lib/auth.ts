@@ -2,8 +2,11 @@
 export const COOKIE = "ripe_hq";
 
 export async function sessionToken(secret: string): Promise<string> {
-  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode("ripe-hq-session-v1"));
+  const subtle = globalThis.crypto?.subtle;
+  if (!subtle) throw new Error("Web Crypto is not available in this runtime");
+  const enc = new TextEncoder();
+  const key = await subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await subtle.sign("HMAC", key, enc.encode("ripe-hq-session-v1"));
   return Array.from(new Uint8Array(sig), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 

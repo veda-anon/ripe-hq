@@ -23,8 +23,8 @@ export const env = {
   assistantAccount: (process.env.ASSISTANT_ACCOUNT as Account | undefined) ?? "personal",
   anthropicKey: process.env.ANTHROPIC_API_KEY,
   anthropicModel: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5-5",
-  password: process.env.DASHBOARD_PASSWORD,
-  sessionSecret: process.env.SESSION_SECRET ?? process.env.DASHBOARD_PASSWORD ?? "",
+  password: process.env.DASHBOARD_PASSWORD?.trim(),
+  sessionSecret: (process.env.SESSION_SECRET || process.env.DASHBOARD_PASSWORD || "").trim(), // must match middleware.ts
   cronSecret: process.env.CRON_SECRET,
   appUrl: process.env.APP_URL ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000"),
   // Waitlist sheet (the "Ripe Waitlist" Google Sheet that ripe.care writes to)

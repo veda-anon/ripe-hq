@@ -16,7 +16,7 @@ const refresh = () => revalidatePath("/", "layout");
 /* ---------- auth ---------- */
 
 export async function login(_: unknown, fd: FormData) {
-  const pw = String(fd.get("password") ?? "");
+  const pw = String(fd.get("password") ?? "").trim();
   if (!env.password || !safeEqual(pw, env.password)) return { error: "That's not it." };
   const jar = await cookies();
   jar.set(COOKIE, await sessionToken(env.sessionSecret), { httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
