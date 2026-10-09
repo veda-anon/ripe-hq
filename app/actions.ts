@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { env, has } from "@/lib/config";
+import { env, has, connectedAccounts, type Account } from "@/lib/config";
 import { COOKIE, sessionToken, safeEqual } from "@/lib/auth";
 import { addBusinessDays, todayISO } from "@/lib/dates";
 import * as N from "@/lib/notion";
@@ -73,6 +73,8 @@ export async function sendOutreach(_: ComposeState, fd: FormData): Promise<Compo
   const outreachId = (fd.get("outreachId") as string) || undefined;
   const existingNotes = String(fd.get("existingNotes") ?? "");
   const mode = String(fd.get("mode") ?? "send");
+  const from = (String(fd.get("from") ?? "") as Account) || G.defaultSendFrom();
+  if (!connectedAccounts().includes(from)) return { error: "That sending account isn't connected. See Connections." };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return { error: "That email address doesn't look right." };
   if (!center) return { error: "Add the center name so it lands in Notion." };
   if (!subject || !body) return { error: "Subject and message are both needed." };
@@ -80,10 +82,10 @@ export async function sendOutreach(_: ComposeState, fd: FormData): Promise<Compo
 
   try {
     if (mode === "draft") {
-      await G.createDraft({ to, subject, body });
+      await G.createDraft(from, { to, subject, body });
       return { ok: `Saved to your Gmail drafts. It'll show up under "Waiting for your OK" once ${center} is in Notion.` };
     }
-    await G.sendEmail({ to, subject, body });
+    await G.sendEmail(from, { to, subject, body });
     const today = todayISO();
     await N.recordOutreachSend({
       id: outreachId,
@@ -93,7 +95,7 @@ export async function sendOutreach(_: ComposeState, fd: FormData): Promise<Compo
       dateSent: today,
       followUpOn: addBusinessDays(today, env.followUpDays),
       framing: "Cash-pay patients (new)",
-      note: `First email sent: "${subject}"`,
+      note: `First email sent from ${await G.myEmail(from)}: "${subject}"`,
       existingNotes,
     });
     refresh();
@@ -112,15 +114,22 @@ export async function aiFirstDraft(center: string, contact: string, notes: strin
   }
 }
 
+const acctOf = (fd: FormData): Account => {
+  const a = String(fd.get("account")) as Account;
+  if (!connectedAccounts().includes(a)) throw new Error("Unknown account");
+  return a;
+};
+
 export async function approveDraft(fd: FormData) {
   const id = String(fd.get("draftId"));
+  const account = acctOf(fd);
   const to = String(fd.get("to"));
   const subject = humanize(String(fd.get("subject") ?? ""));
   const body = humanize(String(fd.get("body") ?? ""));
   const threadId = (fd.get("threadId") as string) || undefined;
   const inReplyTo = (fd.get("inReplyTo") as string) || undefined;
-  await G.updateDraft(id, { to, subject, body, threadId, inReplyTo });
-  await G.sendDraft(id);
+  await G.updateDraft(account, id, { to, subject, body, threadId, inReplyTo });
+  await G.sendDraft(account, id);
 
   const rows = await N.getOutreach();
   const row = rows.find((r) => r.sentTo?.toLowerCase() === to.toLowerCase());
@@ -133,7 +142,7 @@ export async function approveDraft(fd: FormData) {
 }
 
 export async function discardDraft(fd: FormData) {
-  await G.deleteDraft(String(fd.get("draftId")));
+  await G.deleteDraft(acctOf(fd), String(fd.get("draftId")));
   refresh();
 }
 

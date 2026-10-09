@@ -10,12 +10,16 @@ export function Compose({
   prefill,
   unsent,
   claudeOn,
+  senders,
+  defaultFrom,
 }: {
   send: (s: ComposeState, fd: FormData) => Promise<ComposeState>;
   aiDraft: (center: string, contact: string, notes: string, ask: string) => Promise<{ subject: string; body: string } | { error: string }>;
   prefill: Prefill;
   unsent: { id: string; center: string; contact: string; to: string | null; notes: string }[];
   claudeOn: boolean;
+  senders: { value: string; label: string }[];
+  defaultFrom: string;
 }) {
   const [state, action, sending] = useActionState(send, {});
   const [p, setP] = useState<Prefill>(prefill);
@@ -48,6 +52,16 @@ export function Compose({
       <input type="hidden" name="existingNotes" value={p.notes ?? ""} />
       <div className="field"><label htmlFor="center">Center</label><input id="center" name="center" className="input" value={p.center ?? ""} onChange={(e) => setP({ ...p, center: e.target.value })} required /></div>
       <div className="field"><label htmlFor="contact">Contact name</label><input id="contact" name="contact" className="input" value={p.contact ?? ""} onChange={(e) => setP({ ...p, contact: e.target.value })} placeholder="Optional" /></div>
+      {senders.length > 1 ? (
+        <div className="field full">
+          <label htmlFor="from">Send from</label>
+          <select id="from" name="from" className="select" defaultValue={defaultFrom}>
+            {senders.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+          </select>
+        </div>
+      ) : (
+        <input type="hidden" name="from" value={senders[0]?.value ?? ""} />
+      )}
       <div className="field full"><label htmlFor="to">To</label><input id="to" name="to" type="email" className="input" value={p.to ?? ""} onChange={(e) => setP({ ...p, to: e.target.value })} required /></div>
 
       {claudeOn && (

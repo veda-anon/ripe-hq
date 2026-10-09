@@ -12,7 +12,15 @@ export const env = {
   notionToken: process.env.NOTION_TOKEN,
   googleClientId: process.env.GOOGLE_CLIENT_ID,
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  googleRefreshToken: process.env.GOOGLE_REFRESH_TOKEN,
+  // Two Google accounts. GOOGLE_REFRESH_TOKEN is your personal Gmail; GOOGLE_REFRESH_TOKEN_RIPE is ripe.care.
+  googleTokens: {
+    personal: process.env.GOOGLE_REFRESH_TOKEN || undefined,
+    ripe: process.env.GOOGLE_REFRESH_TOKEN_RIPE || undefined,
+  } as Record<Account, string | undefined>,
+  // Default "Send from" for new emails. Follow-ups always go from the account that sent the original.
+  sendFrom: (process.env.SEND_FROM as Account | undefined) ?? (process.env.GOOGLE_REFRESH_TOKEN_RIPE ? "ripe" : "personal"),
+  // Which account gets calendar events, the morning brief and the assistant doc (the one Instinct / Muse can see)
+  assistantAccount: (process.env.ASSISTANT_ACCOUNT as Account | undefined) ?? "personal",
   anthropicKey: process.env.ANTHROPIC_API_KEY,
   anthropicModel: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5-5",
   password: process.env.DASHBOARD_PASSWORD,
@@ -30,8 +38,18 @@ export const env = {
   senderName: process.env.SENDER_NAME ?? "Veda",
 };
 
+export type Account = "personal" | "ripe";
+export const ACCOUNTS: Account[] = ["personal", "ripe"];
+export const ACCOUNT_LABEL: Record<Account, string> = { personal: "Personal Gmail", ripe: "ripe.care" };
+
+/** Accounts that have a refresh token set */
+export function connectedAccounts(): Account[] {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) return [];
+  return ACCOUNTS.filter((a) => !!env.googleTokens[a]);
+}
+
 export const has = {
   notion: () => !!env.notionToken,
-  google: () => !!(env.googleClientId && env.googleClientSecret && env.googleRefreshToken),
+  google: () => connectedAccounts().length > 0,
   claude: () => !!env.anthropicKey,
 };

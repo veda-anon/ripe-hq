@@ -64,7 +64,9 @@ export async function runFollowUpAgent(): Promise<AgentReport> {
         followUpNumber: sentCount + 1,
       });
       const subject = last?.subject ? (/^re:/i.test(last.subject) ? last.subject : `Re: ${last.subject}`) : `Following up: Ripe and ${o.center}`;
-      await G.createDraft({ to: o.sentTo!, subject, body, threadId: last?.threadId, inReplyTo: last?.messageId || undefined });
+      // Draft in the same mailbox the original went out from, so it threads correctly
+      const acct = last?.account ?? G.defaultSendFrom();
+      await G.createDraft(acct, { to: o.sentTo!, subject, body, threadId: last?.threadId, inReplyTo: last?.messageId || undefined });
       await N.appendOutreachNote(o.id, o.notes, "Follow-up draft written by agent, waiting for approval");
       r.lines.push(`Drafted follow-up #${sentCount + 1} for ${o.center}.`);
     } catch (e: any) {
@@ -192,9 +194,10 @@ export async function runDaily(): Promise<AgentReport> {
   const brief = buildBrief(d, fu.lines);
   if (has.google()) {
     try {
-      const me = await G.myEmail();
+      const acct = G.assistantAccount();
+      const me = await G.myEmail(acct);
       const subject = `Ripe HQ · ${fmtShort(d.today)}: ${d.focus[0]?.title ?? "clear day"}`;
-      await G.sendEmail({ to: me, subject, body: brief, cc: env.assistantEmail || undefined });
+      await G.sendEmail(acct, { to: me, subject, body: brief, cc: env.assistantEmail || undefined });
       report.lines.push(`Morning brief emailed to ${me}${env.assistantEmail ? ` and ${env.assistantEmail}` : ""}.`);
     } catch (e: any) {
       report.errors.push(`Brief email: ${e?.message ?? e}`);

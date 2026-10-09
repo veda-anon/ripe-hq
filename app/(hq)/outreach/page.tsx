@@ -3,7 +3,7 @@ import { Topbar } from "@/components/Topbar";
 import { Setup } from "@/components/Setup";
 import { Compose } from "@/components/Compose";
 import { SelectAction, DateAction, RunAgents } from "@/components/client";
-import { has } from "@/lib/config";
+import { has, ACCOUNT_LABEL } from "@/lib/config";
 import * as N from "@/lib/notion";
 import * as G from "@/lib/google";
 import { fmtShort, relative, todayISO } from "@/lib/dates";
@@ -21,9 +21,11 @@ export default async function OutreachPage({ searchParams }: { searchParams: Pro
   const unsent = rows.filter((r) => !r.dateSent);
 
   let drafts: G.Draft[] = [];
+  let senders: { account: string; email: string | null }[] = [];
   let gErr = "";
   if (has.google()) {
     try {
+      senders = await G.accountEmails();
       drafts = await G.listDraftsTo(rows.map((r) => r.sentTo).filter(Boolean) as string[]);
     } catch (e: any) {
       gErr = e?.message ?? String(e);
@@ -68,11 +70,12 @@ export default async function OutreachPage({ searchParams }: { searchParams: Pro
               {drafts.map((d) => (
                 <form key={d.id} action={approveDraft} className="draft">
                   <input type="hidden" name="draftId" value={d.id} />
+                  <input type="hidden" name="account" value={d.account} />
                   <input type="hidden" name="to" value={d.to} />
                   <input type="hidden" name="threadId" value={d.threadId ?? ""} />
                   <input type="hidden" name="inReplyTo" value={d.inReplyTo ?? ""} />
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
-                    <b>{centerFor(d.to)}</b><span className="note">{d.to}</span>
+                    <b>{centerFor(d.to)}</b><span className="note">to {d.to} · from {ACCOUNT_LABEL[d.account]}</span>
                   </div>
                   <input name="subject" className="input" defaultValue={d.subject} aria-label="Subject" style={{ marginBottom: 8 }} />
                   <textarea name="body" className="textarea" defaultValue={d.body} aria-label="Message" />
@@ -119,6 +122,8 @@ export default async function OutreachPage({ searchParams }: { searchParams: Pro
               send={sendOutreach}
               aiDraft={aiFirstDraft}
               claudeOn={has.claude()}
+              senders={senders.map((x) => ({ value: x.account, label: `${ACCOUNT_LABEL[x.account as keyof typeof ACCOUNT_LABEL]}${x.email ? ` (${x.email})` : ""}` }))}
+              defaultFrom={has.google() ? G.defaultSendFrom() : ""}
               unsent={unsent.map((u) => ({ id: u.id, center: u.center, contact: u.contact, to: u.sentTo, notes: u.notes }))}
               prefill={(() => {
                 const r = rows.find((x) => x.id === row);

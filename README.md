@@ -37,7 +37,10 @@ Import this repo at vercel.com/new. Framework is auto-detected.
 | `NOTION_TOKEN` | notion.so/profile/integrations → New internal integration "Ripe HQ" → secret. Then in Notion, on **Execution Tasks**, **Confirmed NYC / NJ Outreach**, **Target Pipeline**, **Content Tracker** and the **Execution Roadmap** page: ••• → Connections → Ripe HQ. |
 | `ANTHROPIC_API_KEY` | console.anthropic.com → API keys. Used for follow-up drafts and research triage. |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | See step 3. |
-| `GOOGLE_REFRESH_TOKEN` | See step 3. |
+| `GOOGLE_REFRESH_TOKEN` | Your personal Gmail. See step 3. |
+| `GOOGLE_REFRESH_TOKEN_RIPE` | Your ripe.care account. See step 3. |
+| `SEND_FROM` | Optional. `ripe` or `personal`: the default "Send from" for new clinic emails. Defaults to `ripe` once it's connected. |
+| `ASSISTANT_ACCOUNT` | Optional. `personal` or `ripe`: which account gets calendar events, the morning brief and the assistant doc. Pick the one Instinct and Muse are connected to. Default `personal`. |
 | `APP_URL` | Your Vercel URL, e.g. `https://ripe-hq.vercel.app` |
 | `WAITLIST_SHEET_ID` | The ID in the "Ripe Waitlist" Google Sheet URL (`/d/<this part>/edit`) |
 | `SENDER_NAME` | Name on outgoing email. Default `Veda`. |
@@ -45,14 +48,26 @@ Import this repo at vercel.com/new. Framework is auto-detected.
 | `FOLLOW_UP_DAYS` | Optional. Business days before a follow-up is due. Default 5. |
 | `ANTHROPIC_MODEL` | Optional. Default `claude-sonnet-5-5`. |
 
-### 3. Google (Gmail, Calendar, Drive, Sheets)
+### 3. Google (Gmail, Calendar, Drive, Sheets), two accounts
+
+Ripe HQ works with your personal Gmail and ripe.care side by side:
+- Replies are checked in **both** inboxes.
+- Follow-ups go out from **whichever account sent the original**, in the same thread.
+- New emails have a **Send from** picker.
+- Calendar, brief and assistant doc go to `ASSISTANT_ACCOUNT`.
+
+One Google Cloud project covers both accounts. Create it from either account.
+
 1. console.cloud.google.com → new project "Ripe HQ".
 2. APIs & Services → Library → enable **Gmail API**, **Google Calendar API**, **Google Drive API**, **Google Sheets API**.
-3. OAuth consent screen → External → add yourself as a test user → then **Publish app** (set to "In production"). If you leave it in Testing, Google expires the refresh token every 7 days and the agent silently stops. You'll see an "unverified app" warning when you connect; that's expected for a personal app.
+3. OAuth consent screen → **External** (Internal would block your gmail.com account) → add both addresses as test users → then **Publish app** (set to "In production"). If you leave it in Testing, Google expires the refresh token every 7 days and the agent silently stops. You'll see an "unverified app" warning when you connect; that's expected for a personal app.
 4. Credentials → Create OAuth client ID → Web application → Authorized redirect URI: `https://<your-app>/api/google/callback`.
-5. Put the client ID and secret in Vercel, redeploy, open **Connections → Connect your Google account**, approve, and paste the token it shows into `GOOGLE_REFRESH_TOKEN`. Redeploy once more.
+5. Put the client ID and secret in Vercel and redeploy.
+6. Open **Connections → Connect Personal Gmail**, sign in with vedapatel01@gmail.com, and paste the token into the variable the page names (`GOOGLE_REFRESH_TOKEN`).
+7. Back on Connections → **Connect ripe.care**, sign in with your ripe.care address, and paste that token into `GOOGLE_REFRESH_TOKEN_RIPE`.
+8. Redeploy once more. Both accounts should show green on Connections.
 
-Sign in with the Google account you want clinic email to come from.
+If ripe.care is a Google Workspace account, its admin console can block unverified third-party apps. If connecting ripe.care fails with an "access blocked" message, go to admin.google.com → Security → Access and data control → API controls → Manage third-party app access, and mark Ripe HQ as Trusted.
 
 ### 4. Test
 Connections → **Run agents now**. You should get a brief in your inbox, "Ripe:" events on your calendar, and drafts for any due follow-ups.
