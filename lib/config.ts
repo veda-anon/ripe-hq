@@ -8,6 +8,13 @@ export const DS = {
 
 export const TZ = "America/New_York";
 
+/** "ripe-hq.vercel.app/" -> "https://ripe-hq.vercel.app" so redirect URIs always match Google's */
+function normalizeUrl(u: string): string {
+  let v = u.trim().replace(/\/+$/, "");
+  if (!/^https?:\/\//i.test(v)) v = (/^localhost/i.test(v) ? "http://" : "https://") + v;
+  return v;
+}
+
 export const env = {
   notionToken: process.env.NOTION_TOKEN,
   googleClientId: process.env.GOOGLE_CLIENT_ID,
@@ -26,7 +33,7 @@ export const env = {
   password: process.env.DASHBOARD_PASSWORD?.trim(),
   sessionSecret: (process.env.SESSION_SECRET || process.env.DASHBOARD_PASSWORD || "").trim(), // must match middleware.ts
   cronSecret: process.env.CRON_SECRET,
-  appUrl: process.env.APP_URL ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000"),
+  appUrl: normalizeUrl(process.env.APP_URL || process.env.VERCEL_PROJECT_PRODUCTION_URL || "http://localhost:3000"),
   // Waitlist sheet (the "Ripe Waitlist" Google Sheet that ripe.care writes to)
   waitlistSheetId: process.env.WAITLIST_SHEET_ID,
   // Optional: Instinct's dedicated email address. If set, the morning brief is also sent there.
